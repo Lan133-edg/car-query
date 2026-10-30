@@ -27,11 +27,18 @@ function workNoOf(car) {
   return ''
 }
 
+// 去前导零：030455 → 30455（数字车号前导零容错）
+function stripZeros(v) {
+  var s = String(v == null ? '' : v).replace(/^0+/, '')
+  return s || '0'
+}
+
 // 搜索：车号或工作号，精确 + 模糊（含宽松容错），返回 { exact, fuzzy }
 function searchIn(cars, keyword) {
   var key = normalizeKey(keyword)
   if (!key) return { exact: null, fuzzy: [] }
   var keyLoose = looseKey(key)
+  var keyStripped = /^\d+$/.test(keyLoose) ? stripZeros(keyLoose) : ''
   var exact = null
   var fuzzy = []
   var fuzzyLoose = []
@@ -41,8 +48,11 @@ function searchIn(cars, keyword) {
     var workNo = normalizeKey(workNoOf(car))
     var noLoose = looseKey(no)
     var workNoLoose = looseKey(workNo)
+    var noStripped = /^\d+$/.test(noLoose) ? stripZeros(noLoose) : ''
+    var workNoStripped = /^\d+$/.test(workNoLoose) ? stripZeros(workNoLoose) : ''
 
     if (no === key || (workNo && workNo === key)) { exact = car; break }
+    if (keyStripped && (noStripped === keyStripped || workNoStripped === keyStripped)) { exact = car; break }
     if (keyLoose.length >= 4 && (workNoLoose === keyLoose || noLoose === keyLoose)) { exact = car; break }
 
     if (no.indexOf(key) > -1 || (workNo && workNo.indexOf(key) > -1)) {
@@ -253,7 +263,7 @@ function donutSegments(map, topN) {
   var STORAGE_KEY = 'car_query_web_data_v1'
   var RECENT_KEY = 'car_query_web_recent_v1'
   var ADMIN_KEY = 'car_query_web_admin_v1'
-  var WEB_DATA_VERSION = 3 // v3：修复个别浏览器缓存旧数据导致查不到车（强制刷新内置数据）
+  var WEB_DATA_VERSION = 4 // v4：合并 25年分车表（+566 辆，共 1098 辆）；v2 合并标外.xls
 
   var $ = function (id) { return document.getElementById(id) }
 
