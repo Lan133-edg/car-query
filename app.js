@@ -263,7 +263,7 @@ function donutSegments(map, topN) {
   var STORAGE_KEY = 'car_query_web_data_v1'
   var RECENT_KEY = 'car_query_web_recent_v1'
   var ADMIN_KEY = 'car_query_web_admin_v1'
-  var WEB_DATA_VERSION = 4 // v4：合并 25年分车表（+566 辆，共 1098 辆）；v2 合并标外.xls
+  var WEB_DATA_VERSION = 5 // v5：data.json 在线自动更新（启动时后台拉取最新数据）；v4 合并 25年分车表
 
   var $ = function (id) { return document.getElementById(id) }
 
@@ -302,6 +302,28 @@ function donutSegments(map, topN) {
       return saveData(window.SEED_CARS, 'seed')
     }
     return d
+  }
+
+  // 在线数据自动更新：启动后台拉取 data.json（绕过缓存）。
+  // 维护者更新 data.json 后，所有设备打开页面几分钟内自动换成最新数据，无需换链接、无需清缓存。
+  // 管理员在本机导入过的数据（source=import）不会被覆盖。
+  function refreshRemoteData() {
+    if (typeof fetch !== 'function' || !window.SEED_CARS || !window.SEED_CARS.length) return
+    fetch('data.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status)
+      return r.json()
+    }).then(function (cars) {
+      if (!Array.isArray(cars) || !cars.length) return
+      var d = loadData()
+      if (d.source === 'import') return
+      var unchanged = d.cars.length === cars.length &&
+        d.cars.length && cars.length &&
+        d.cars[0].carNo === cars[0].carNo &&
+        d.cars[d.cars.length - 1].carNo === cars[cars.length - 1].carNo &&
+        d.dataVersion === WEB_DATA_VERSION
+      if (unchanged) return
+      saveData(cars, 'seed')
+    }).catch(function () { /* 网络失败时静默，沿用本地数据 */ })
   }
 
   function fmtTime(ts) {
@@ -733,6 +755,7 @@ function donutSegments(map, topN) {
   // ---------- 事件绑定 ----------
   document.addEventListener('DOMContentLoaded', function () {
     ensureData()
+    refreshRemoteData()
     renderRecent()
 
     $('search-btn').addEventListener('click', function () { doSearch($('keyword').value) })
