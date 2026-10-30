@@ -170,16 +170,27 @@
 
   /* ---------- 汇总筛选与图表 ---------- */
   .filter-card { margin-top: 16px; padding: 14px 16px; }
-  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .filter-select {
-    flex: 1; min-width: 96px; border: 1px solid var(--border); border-radius: 10px;
-    padding: 8px 10px; font-size: 13px; background: #f8f9fd; color: var(--text); outline: none;
+  .fgroup { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+  .fgroup:last-of-type { margin-bottom: 0; }
+  .flabel { flex-shrink: 0; width: 34px; font-size: 12px; color: var(--text-sub); line-height: 26px; font-weight: 600; }
+  .fchips { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .fchip {
+    border: 1px solid var(--border); background: #f8f9fd; color: var(--text);
+    border-radius: 999px; font-size: 12px; padding: 4px 12px; cursor: pointer;
+    transition: all .15s; user-select: none;
   }
-  .filter-row2 { display: flex; align-items: center; margin-top: 10px; gap: 8px; }
+  .fchip.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .fchip:active { transform: scale(.95); }
+  .filter-row2 { display: flex; align-items: center; margin-top: 12px; gap: 8px; }
   .fcheck { font-size: 13px; color: var(--text-sub); display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
   .fcheck input { accent-color: var(--primary); transform: scale(1.15); }
   .freset { margin-left: auto; border: none; background: none; color: var(--primary); font-size: 13px; cursor: pointer; }
+  .fhint { margin-top: 8px; font-size: 11px; color: #b6bdcc; }
   .stats-excluded { font-size: 12px; color: #d97a06; }
+  .filter-select {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 7px 10px; font-size: 13px; background: #f8f9fd; color: var(--text); outline: none;
+  }
   .chart-card { padding: 16px; }
   .chart-head { display: flex; align-items: center; justify-content: space-between; }
   .chart-title { font-size: 15px; font-weight: 700; }
@@ -410,16 +421,15 @@
     </div>
 
     <div class="card filter-card">
-      <div class="filter-row">
-        <select id="filter-model" class="filter-select"></select>
-        <select id="filter-kind" class="filter-select"></select>
-        <select id="filter-process" class="filter-select"></select>
-      </div>
+      <div class="fgroup"><span class="flabel">车型</span><div class="fchips" id="chips-model"></div></div>
+      <div class="fgroup"><span class="flabel">车种</span><div class="fchips" id="chips-kind"></div></div>
+      <div class="fgroup"><span class="flabel">标的</span><div class="fchips" id="chips-process"></div></div>
       <div class="filter-row2">
         <label class="fcheck"><input type="checkbox" id="stats-exclude" checked> 排除标外车</label>
         <span id="stats-excluded" class="stats-excluded"></span>
         <button id="filter-reset" class="freset">重置筛选</button>
       </div>
+      <div class="fhint">点击标签可多选勾筛；不勾 = 该维度不限</div>
     </div>
 
     <div class="card chart-card">

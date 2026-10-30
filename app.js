@@ -159,17 +159,19 @@ function parseCarType(t) {
 
 // 各厂家分车汇总：厂家 -> 车辆数（去重）/ 分工项数 / 标的·车型·车种分布
 // opts: { excludeBiaowai, model, kind, process }
-//   excludeBiaowai=true 排除标外车；model/kind 过滤车辆；process 过滤分工项；'全部' 表示不过滤
+//   excludeBiaowai=true 排除标外车；model/kind/process 为**多选数组**（空数组=该维度不限）
 function buildStats(cars, opts) {
   if (typeof opts === 'boolean') opts = { excludeBiaowai: opts } // 兼容旧签名
   opts = opts || {}
+  function hit(arr, val) { return !arr || !arr.length || arr.indexOf(val) > -1 }
   var list = []
   var excluded = 0
   for (var i = 0; i < cars.length; i++) {
     var car0 = cars[i]
     if (opts.excludeBiaowai && car0.biaowai) { excluded++; continue }
-    if (opts.model && opts.model !== '全部' && parseCarType(car0.carType).model !== opts.model) continue
-    if (opts.kind && opts.kind !== '全部' && parseCarType(car0.carType).kind !== opts.kind) continue
+    var tt0 = parseCarType(car0.carType)
+    if (!hit(opts.model, tt0.model)) continue
+    if (!hit(opts.kind, tt0.kind)) continue
     list.push(car0)
   }
   var map = {}
@@ -180,7 +182,7 @@ function buildStats(cars, opts) {
     var perCar = {} // 车辆级去重：该厂家在这辆车上承接的所有工序
     var as = car.assignments || []
     for (var k = 0; k < as.length; k++) {
-      if (opts.process && opts.process !== '全部' && String(as[k].process || '') !== opts.process) continue
+      if (!hit(opts.process, String(as[k].process || ''))) continue
       var sup = String(as[k].supplier == null ? '' : as[k].supplier).trim()
       if (!sup) continue
       totalEntries++
@@ -300,7 +302,8 @@ function donutSegments(map, topN) {
   }
 
   // ---------- 分工汇总（管理员） ----------
-  var statsState = { exclude: true, model: '全部', kind: '全部', process: '全部', pieDim: 'supplier' }
+  // 筛选状态：数组为**多选**，空数组 = 该维度不限
+  var statsState = { exclude: true, model: [], kind: [], process: [], pieDim: 'supplier' }
   var filterOptions = { models: [], kinds: [], processes: [] }
   var lastStats = null
 
@@ -330,19 +333,30 @@ function donutSegments(map, topN) {
     filterOptions = { models: keysOf(models), kinds: keysOf(kinds), processes: keysOf(processes) }
   }
 
-  function fillSelect(id, arr, label, current) {
-    var el = $(id)
-    var html = '<option value="全部">全部' + label + '</option>'
-    for (var i = 0; i < arr.length; i++) {
-      html += '<option value="' + escAttr(arr[i]) + '"' + (arr[i] === current ? ' selected' : '') + '>' + esc(arr[i]) + '</option>'
-    }
-    el.innerHTML = html
+  // 渲染三个多选标签组（点击勾选/取消，可多选）
+  function renderFilterChips() {
+    renderChipGroup('chips-model', filterOptions.models, statsState.model)
+    renderChipGroup('chips-kind', filterOptions.kinds, statsState.kind)
+    renderChipGroup('chips-process', filterOptions.processes, statsState.process)
   }
 
-  function fillFilterSelects() {
-    fillSelect('filter-model', filterOptions.models, '车型', statsState.model)
-    fillSelect('filter-kind', filterOptions.kinds, '车种', statsState.kind)
-    fillSelect('filter-process', filterOptions.processes, '标的', statsState.process)
+  function renderChipGroup(id, options, selected) {
+    var html = ''
+    for (var i = 0; i < options.length; i++) {
+      var v = options[i]
+      var on = selected.indexOf(v) > -1
+      html += '<span class="fchip' + (on ? ' on' : '') + '" data-dim="' + id + '" data-val="' + escAttr(v) + '">' + esc(v) + '</span>'
+    }
+    $(id).innerHTML = html
+  }
+
+  function toggleChip(dim, val) {
+    var arr = statsState[dim]
+    var idx = arr.indexOf(val)
+    if (idx > -1) arr.splice(idx, 1)
+    else arr.push(val)
+    renderFilterChips()
+    renderStatsView()
   }
 
   // 汇总维度聚合：supplier=厂家车辆数；process/model/kind=对应分布累加
@@ -448,7 +462,7 @@ function donutSegments(map, topN) {
   function openStats() {
     var data = ensureData()
     collectFilterOptions(data.cars)
-    fillFilterSelects()
+    renderFilterChips()
     lastStats = buildStats(data.cars, statsState)
     renderStats(lastStats)
     show('stats')
@@ -707,12 +721,19 @@ function donutSegments(map, topN) {
     $('stats-back').addEventListener('click', function () { show('admin'); renderAdmin() })
 
     $('stats-exclude').addEventListener('change', function () { statsState.exclude = this.checked; renderStatsView() })
-    $('filter-model').addEventListener('change', function () { statsState.model = this.value; renderStatsView() })
-    $('filter-kind').addEventListener('change', function () { statsState.kind = this.value; renderStatsView() })
-    $('filter-process').addEventListener('change', function () { statsState.process = this.value; renderStatsView() })
+    // 多选标签：点击切换勾选（事件委托）
+    $('chips-model').addEventListener('click', function (e) {
+      var c = e.target.closest('.fchip'); if (c) toggleChip('model', c.getAttribute('data-val'))
+    })
+    $('chips-kind').addEventListener('click', function (e) {
+      var c = e.target.closest('.fchip'); if (c) toggleChip('kind', c.getAttribute('data-val'))
+    })
+    $('chips-process').addEventListener('click', function (e) {
+      var c = e.target.closest('.fchip'); if (c) toggleChip('process', c.getAttribute('data-val'))
+    })
     $('filter-reset').addEventListener('click', function () {
-      statsState.model = '全部'; statsState.kind = '全部'; statsState.process = '全部'; statsState.exclude = true
-      fillFilterSelects(); $('stats-exclude').checked = true; renderStatsView()
+      statsState.model = []; statsState.kind = []; statsState.process = []; statsState.exclude = true
+      renderFilterChips(); $('stats-exclude').checked = true; renderStatsView()
     })
     $('chart-bar-btn').addEventListener('click', function () { setChartType('bar') })
     $('chart-pie-btn').addEventListener('click', function () { setChartType('pie') })
