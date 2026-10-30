@@ -9,8 +9,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-<script src="data.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="data.js?v=9"></script>
+<script src="app.js?v=9"></script>
 <script>
 // 自检保险：1.5 秒后若主脚本未就绪（加载失败/不完整），弹出重新加载提示
 (function () {
@@ -444,7 +444,7 @@
       <div class="fgroup"><span class="flabel">车种</span><div class="fchips" id="chips-kind"></div></div>
       <div class="fgroup"><span class="flabel">标的</span><div class="fchips" id="chips-process"></div></div>
       <div class="filter-row2">
-        <label class="fcheck"><input type="checkbox" id="stats-exclude" checked> 排除标外车</label>
+        <span class="fcheck" style="cursor:default">统计不含标外车</span>
         <span id="stats-excluded" class="stats-excluded"></span>
         <button id="filter-reset" class="freset">重置筛选</button>
       </div>

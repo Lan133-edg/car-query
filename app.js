@@ -463,6 +463,7 @@ function donutSegments(map, topN) {
 
   function renderStatsView() {
     var data = ensureData()
+    statsState.exclude = true // 标外车一律不参与统计
     lastStats = buildStats(data.cars, statsState)
     renderStats(lastStats)
   }
@@ -471,6 +472,7 @@ function donutSegments(map, topN) {
     var data = ensureData()
     collectFilterOptions(data.cars)
     renderFilterChips()
+    statsState.exclude = true // 标外车一律不参与统计
     lastStats = buildStats(data.cars, statsState)
     renderStats(lastStats)
     show('stats')
@@ -747,7 +749,6 @@ function donutSegments(map, topN) {
     $('stats-entry').addEventListener('click', openStats)
     $('stats-back').addEventListener('click', function () { show('admin'); renderAdmin() })
 
-    $('stats-exclude').addEventListener('change', function () { statsState.exclude = this.checked; renderStatsView() })
     // 多选标签：点击切换勾选（事件委托）
     $('chips-model').addEventListener('click', function (e) {
       var c = e.target.closest('.fchip'); if (c) toggleChip('model', c.getAttribute('data-val'))
@@ -760,7 +761,7 @@ function donutSegments(map, topN) {
     })
     $('filter-reset').addEventListener('click', function () {
       statsState.model = []; statsState.kind = []; statsState.process = []; statsState.exclude = true
-      renderFilterChips(); $('stats-exclude').checked = true; renderStatsView()
+      renderFilterChips(); renderStatsView()
     })
     $('chart-bar-btn').addEventListener('click', function () { setChartType('bar') })
     $('chart-pie-btn').addEventListener('click', function () { setChartType('pie') })
