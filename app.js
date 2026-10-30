@@ -156,7 +156,7 @@ function checkAdmin(username, password) {
   var STORAGE_KEY = 'car_query_web_data_v1'
   var RECENT_KEY = 'car_query_web_recent_v1'
   var ADMIN_KEY = 'car_query_web_admin_v1'
-  var WEB_DATA_VERSION = 1
+  var WEB_DATA_VERSION = 2 // v2：合并标外.xls（108 辆 biaowai 标记，统计时排除；分工冲突以分车表为准）
 
   var $ = function (id) { return document.getElementById(id) }
 
@@ -237,6 +237,7 @@ function checkAdmin(username, password) {
     if (car.carType) html += '<span class="tag tag-primary">' + esc(car.carType) + '</span>'
     var wn = workNoOf(car)
     if (wn) html += '<span class="tag tag-gray">工作号 ' + esc(wn) + '</span>'
+    if (car.biaowai) html += '<span class="tag tag-warn">标外</span>'
     html += '</div></div>'
 
     if (car.base && car.base.length) {
@@ -272,7 +273,7 @@ function checkAdmin(username, password) {
       var c = list[i]
       html += '<div class="fuzzy-row" data-no="' + escAttr(c.carNo) + '">'
       html += '<span class="fuzzy-no">' + esc(c.carNo) + '</span>'
-      html += '<span class="fuzzy-type">' + esc(c.carType || '—') + (workNoOf(c) ? ' · 工作号 ' + esc(workNoOf(c)) : '') + '</span>'
+      html += '<span class="fuzzy-type">' + esc(c.carType || '—') + (workNoOf(c) ? ' · 工作号 ' + esc(workNoOf(c)) : '') + (c.biaowai ? ' · 标外' : '') + '</span>'
       html += '<span class="fuzzy-arrow">›</span></div>'
     }
     html += '</div>'

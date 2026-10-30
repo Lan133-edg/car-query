@@ -35,3 +35,9 @@
 ## 安全提醒
 
 管理员账号密码写在前端 app.js 中（`ADMIN_USER / ADMIN_PASS`），仅用于防止误操作，**不是真正的安全防护**——懂技术的人打开源码就能看到。内部分工数据如涉密，请勿把仓库设为 Private 以外的公开范围（当前方案要求 Public 才能免费开 Pages；若数据敏感可改用 GitHub Pro 私有仓库 + Pages，或联系维护者调整方案）。
+
+## 已上线
+
+- GitHub 仓库：https://github.com/Lan133-edg/car-query
+- 访问地址（GitHub Pages）：**https://lan133-edg.github.io/car-query/**
+- 首次部署于 2026-10-30；更新数据时重生成 data.js 并推送到 main 分支，1 分钟后全群自动生效（记得 WEB_DATA_VERSION + 1）。
