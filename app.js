@@ -138,14 +138,12 @@ function textToRows(text) {
   return lines.map(function (l) { return l.split(sep).map(function (c) { return c.trim() }) })
 }
 
-// 管理员校验
-var ADMIN_USER = 'sfcl'
-var ADMIN_PASS = '123'
-function checkAdmin(username, password) {
-  var u = String(username == null ? '' : username).trim()
+// 管理员校验（仅需密码）
+var ADMIN_PASS = '123456'
+function checkAdmin(password) {
   var p = String(password == null ? '' : password).trim()
-  if (!u || !p) return { ok: false, message: '请输入账号和密码' }
-  if (u !== ADMIN_USER || p !== ADMIN_PASS) return { ok: false, message: '账号或密码错误' }
+  if (!p) return { ok: false, message: '请输入管理员密码' }
+  if (p !== ADMIN_PASS) return { ok: false, message: '密码错误' }
   return { ok: true, message: '' }
 }
 
@@ -159,13 +157,19 @@ function parseCarType(t) {
 }
 
 // 各厂家分车汇总：厂家 -> 车辆数（去重）/ 分工项数 / 标的·车型·车种分布
-// excludeBiaowai = true 时排除标外车（biaowai 标记车辆，用户要求统计不含标外）
-function buildStats(cars, excludeBiaowai) {
+// opts: { excludeBiaowai, model, kind, process }
+//   excludeBiaowai=true 排除标外车；model/kind 过滤车辆；process 过滤分工项；'全部' 表示不过滤
+function buildStats(cars, opts) {
+  if (typeof opts === 'boolean') opts = { excludeBiaowai: opts } // 兼容旧签名
+  opts = opts || {}
   var list = []
   var excluded = 0
   for (var i = 0; i < cars.length; i++) {
-    if (excludeBiaowai && cars[i].biaowai) { excluded++; continue }
-    list.push(cars[i])
+    var car0 = cars[i]
+    if (opts.excludeBiaowai && car0.biaowai) { excluded++; continue }
+    if (opts.model && opts.model !== '全部' && parseCarType(car0.carType).model !== opts.model) continue
+    if (opts.kind && opts.kind !== '全部' && parseCarType(car0.carType).kind !== opts.kind) continue
+    list.push(car0)
   }
   var map = {}
   var totalEntries = 0
@@ -175,6 +179,7 @@ function buildStats(cars, excludeBiaowai) {
     var perCar = {} // 车辆级去重：该厂家在这辆车上承接的所有工序
     var as = car.assignments || []
     for (var k = 0; k < as.length; k++) {
+      if (opts.process && opts.process !== '全部' && String(as[k].process || '') !== opts.process) continue
       var sup = String(as[k].supplier == null ? '' : as[k].supplier).trim()
       if (!sup) continue
       totalEntries++
@@ -208,6 +213,27 @@ function buildStats(cars, excludeBiaowai) {
   }
   rows.sort(function (a, b) { return b.carCount - a.carCount || b.entries - a.entries })
   return { totalCars: list.length, excludedBiaowai: excluded, totalEntries: totalEntries, supplierCount: rows.length, rows: rows }
+}
+
+// ---------- 图表数据 ----------
+var CHART_COLORS = ['#1e4fd8', '#2e9e5b', '#d97a06', '#8e44ad', '#e5484d', '#0e9bb5', '#c2185b', '#7f8c3a', '#5c6bc0', '#ef6c00']
+
+// 把 {name: count} 聚合转为饼图分段：按数值倒序取前 topN 项，其余合并为「其他」，并分配颜色
+function donutSegments(map, topN) {
+  var keys = Object.keys(map)
+  keys.sort(function (a, b) { return map[b] - map[a] })
+  var total = 0
+  for (var i = 0; i < keys.length; i++) total += map[keys[i]]
+  if (!total) return []
+  var segs = []
+  for (var k = 0; k < keys.length && k < topN; k++) {
+    segs.push({ name: keys[k], value: map[keys[k]], pct: Math.round(map[keys[k]] / total * 1000) / 10 })
+  }
+  var rest = 0
+  for (var r = topN; r < keys.length; r++) rest += map[keys[r]]
+  if (rest > 0) segs.push({ name: '其他', value: rest, pct: Math.round(rest / total * 1000) / 10 })
+  for (var c = 0; c < segs.length; c++) segs[c].color = CHART_COLORS[c % CHART_COLORS.length]
+  return segs
 }
 
 // ===================== PURE END =====================
@@ -272,7 +298,11 @@ function buildStats(cars, excludeBiaowai) {
     $('view-stats').style.display = view === 'stats' ? '' : 'none'
   }
 
-  // ---------- 分工汇总 ----------
+  // ---------- 分工汇总（管理员） ----------
+  var statsState = { exclude: true, model: '全部', kind: '全部', process: '全部', pieDim: 'supplier' }
+  var filterOptions = { models: [], kinds: [], processes: [] }
+  var lastStats = null
+
   function fmtDim(map) {
     var keys = Object.keys(map)
     keys.sort(function (a, b) { return map[b] - map[a] })
@@ -283,14 +313,115 @@ function buildStats(cars, excludeBiaowai) {
     return out.join('')
   }
 
+  // 收集所有可筛选的 车型 / 车种 / 标的
+  function collectFilterOptions(cars) {
+    var models = {}, kinds = {}, processes = {}
+    for (var i = 0; i < cars.length; i++) {
+      var tt = parseCarType(cars[i].carType)
+      if (tt.model && tt.model !== '—') models[tt.model] = true
+      if (tt.kind && tt.kind !== '—') kinds[tt.kind] = true
+      var as = cars[i].assignments || []
+      for (var k = 0; k < as.length; k++) {
+        if (as[k].process) processes[as[k].process] = true
+      }
+    }
+    function keysOf(o) { var a = []; for (var key in o) a.push(key); a.sort(); return a }
+    filterOptions = { models: keysOf(models), kinds: keysOf(kinds), processes: keysOf(processes) }
+  }
+
+  function fillSelect(id, arr, label, current) {
+    var el = $(id)
+    var html = '<option value="全部">全部' + label + '</option>'
+    for (var i = 0; i < arr.length; i++) {
+      html += '<option value="' + escAttr(arr[i]) + '"' + (arr[i] === current ? ' selected' : '') + '>' + esc(arr[i]) + '</option>'
+    }
+    el.innerHTML = html
+  }
+
+  function fillFilterSelects() {
+    fillSelect('filter-model', filterOptions.models, '车型', statsState.model)
+    fillSelect('filter-kind', filterOptions.kinds, '车种', statsState.kind)
+    fillSelect('filter-process', filterOptions.processes, '标的', statsState.process)
+  }
+
+  // 汇总维度聚合：supplier=厂家车辆数；process/model/kind=对应分布累加
+  function aggDims(st, dim) {
+    var map = {}
+    for (var i = 0; i < st.rows.length; i++) {
+      var r = st.rows[i]
+      if (dim === 'supplier') {
+        map[r.name] = (map[r.name] || 0) + r.carCount
+      } else {
+        var src = r[dim] || {}
+        for (var key in src) map[key] = (map[key] || 0) + src[key]
+      }
+    }
+    return map
+  }
+
+  function barChartHtml(st) {
+    if (!st.rows.length) return '<div class="stats-empty">当前筛选条件下没有数据</div>'
+    var max = st.rows[0].carCount || 1
+    var html = '<div class="bar-chart">'
+    for (var i = 0; i < st.rows.length; i++) {
+      var r = st.rows[i]
+      var pct = Math.max(Math.round(r.carCount / max * 100), 4)
+      html += '<div class="bar-row">'
+      html += '<span class="bar-name" title="' + escAttr(r.name) + '">' + esc(r.name) + '</span>'
+      html += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>'
+      html += '<span class="bar-val">' + r.carCount + '</span>'
+      html += '</div>'
+    }
+    html += '</div>'
+    return html
+  }
+
+  function donutChartHtml(st, dim) {
+    var map = aggDims(st, dim)
+    var segs = donutSegments(map, 9)
+    if (!segs.length) return '<div class="stats-empty">当前筛选条件下没有数据</div>'
+    var C = 2 * Math.PI * 70
+    var offset = 0
+    var svg = '<div class="pie-wrap"><svg viewBox="0 0 200 200" width="180" height="180">'
+    svg += '<g transform="rotate(-90 100 100)">'
+    for (var i = 0; i < segs.length; i++) {
+      var s = segs[i]
+      var len = s.pct / 100 * C
+      var vis = Math.max(len - 1.5, 0.5)
+      svg += '<circle cx="100" cy="100" r="70" fill="none" stroke="' + s.color + '" stroke-width="34"'
+      svg += ' stroke-dasharray="' + vis + ' ' + (C - vis) + '" stroke-dashoffset="' + (-offset) + '"></circle>'
+      offset += len
+    }
+    svg += '</g>'
+    var total = 0
+    for (var t = 0; t < segs.length; t++) total += segs[t].value
+    svg += '<text x="100" y="96" text-anchor="middle" font-size="11" fill="#7a839e">总计</text>'
+    svg += '<text x="100" y="120" text-anchor="middle" font-size="22" font-weight="700" fill="#1c2333">' + total + '</text>'
+    svg += '</svg><div class="pie-legend">'
+    for (var j = 0; j < segs.length; j++) {
+      var sg = segs[j]
+      svg += '<div class="pl-item"><span class="pl-dot" style="background:' + sg.color + '"></span>'
+      svg += '<span class="pl-name" title="' + escAttr(sg.name) + '">' + esc(sg.name) + '</span>'
+      svg += '<span class="pl-val">' + sg.value + ' · ' + sg.pct + '%</span></div>'
+    }
+    svg += '</div></div>'
+    return svg
+  }
+
+  function renderCharts(st) {
+    $('chart-bar-wrap').innerHTML = barChartHtml(st)
+    $('chart-pie').innerHTML = donutChartHtml(st, statsState.pieDim)
+  }
+
   function renderStats(st) {
     $('stats-cars').textContent = st.totalCars
     $('stats-suppliers').textContent = st.supplierCount
     $('stats-entries').textContent = st.totalEntries
     $('stats-excluded').textContent = st.excludedBiaowai ? ('已排除标外车 ' + st.excludedBiaowai + ' 辆') : ''
+    renderCharts(st)
     var html = ''
     if (!st.rows.length) {
-      html = '<div class="card sup-card" style="text-align:center;color:var(--text-sub)">暂无可统计数据</div>'
+      html = '<div class="card sup-card" style="text-align:center;color:var(--text-sub)">当前筛选条件下暂无数据</div>'
     }
     for (var i = 0; i < st.rows.length; i++) {
       var r = st.rows[i]
@@ -307,11 +438,27 @@ function buildStats(cars, excludeBiaowai) {
     $('stats-list').innerHTML = html
   }
 
-  function openStats() {
-    var exclude = $('stats-exclude').checked
+  function renderStatsView() {
     var data = ensureData()
-    renderStats(buildStats(data.cars, exclude))
+    lastStats = buildStats(data.cars, statsState)
+    renderStats(lastStats)
+  }
+
+  function openStats() {
+    var data = ensureData()
+    collectFilterOptions(data.cars)
+    fillFilterSelects()
+    lastStats = buildStats(data.cars, statsState)
+    renderStats(lastStats)
     show('stats')
+  }
+
+  function setChartType(t) {
+    var bar = t !== 'pie'
+    $('chart-bar-wrap').style.display = bar ? '' : 'none'
+    $('chart-pie-wrap').style.display = bar ? 'none' : ''
+    $('chart-bar-btn').classList.toggle('active', bar)
+    $('chart-pie-btn').classList.toggle('active', !bar)
   }
 
   // ---------- 查询 ----------
@@ -334,39 +481,55 @@ function buildStats(cars, excludeBiaowai) {
   function escAttr(s) { return esc(s) }
 
   function renderResult(car, updatedAt) {
-    var html = '<div class="card result-card">'
-    html += '<div class="result-head">'
-    html += '<div class="car-no">' + esc(car.carNo) + '</div>'
-    html += '<div class="tags">'
-    if (car.carType) html += '<span class="tag tag-primary">' + esc(car.carType) + '</span>'
     var wn = workNoOf(car)
-    if (wn) html += '<span class="tag tag-gray">工作号 ' + esc(wn) + '</span>'
-    if (car.biaowai) html += '<span class="tag tag-warn">标外</span>'
+    var as = car.assignments || []
+    var assigned = 0
+    for (var z = 0; z < as.length; z++) { if (as[z].supplier) assigned++ }
+
+    // 头部：渐变横幅，车号大字
+    var html = '<div class="card result-card">'
+    html += '<div class="rc-hero">'
+    html += '<div class="rc-carline"><span class="rc-car-no">' + esc(car.carNo) + '</span>'
+    if (car.biaowai) html += '<span class="rc-biaowai">标外</span>'
+    html += '</div>'
+    html += '<div class="rc-tags">'
+    if (car.carType) html += '<span class="rc-tag">' + esc(car.carType) + '</span>'
+    if (wn) html += '<span class="rc-tag">工作号 ' + esc(wn) + '</span>'
     html += '</div></div>'
 
+    html += '<div class="rc-body">'
+
+    // 分工分配（重点突出，放在最前）
+    html += '<div class="rc-sec-head">'
+    html += '<span class="rc-sec-title">分工分配</span>'
+    html += '<span class="rc-count">已分配 ' + assigned + '/' + as.length + ' 项</span>'
+    html += '</div>'
+    if (as.length) {
+      html += '<div class="assign-grid">'
+      for (var a = 0; a < as.length; a++) {
+        var it = as[a]
+        html += '<div class="rc-item' + (it.supplier ? '' : ' rc-item-empty') + '">'
+        html += '<div class="rc-proc">' + esc(it.process) + '</div>'
+        html += '<div class="rc-sup">' + esc(it.supplier || '未分配') + '</div>'
+        html += '</div>'
+      }
+      html += '</div>'
+    } else {
+      html += '<div class="stats-empty">暂无分工分配数据</div>'
+    }
+
+    // 基础信息（次要，放后面）
     if (car.base && car.base.length) {
-      html += '<div class="section"><div class="section-title">基础信息</div><div class="base-grid">'
+      html += '<div class="rc-base">'
+      html += '<div class="rc-base-title">基础信息</div><div class="base-grid">'
       for (var i = 0; i < car.base.length; i++) {
         html += '<div class="base-item"><span class="base-label">' + esc(car.base[i].label) + '</span><span class="base-value">' + esc(car.base[i].value) + '</span></div>'
       }
       html += '</div></div>'
     }
 
-    html += '<div class="section"><div class="section-title">分工分配</div>'
-    if (car.assignments && car.assignments.length) {
-      html += '<div class="assign-list">'
-      for (var a = 0; a < car.assignments.length; a++) {
-        var it = car.assignments[a]
-        html += '<div class="assign-row"><span class="assign-process">' + esc(it.process) + '</span><span class="assign-supplier' + (it.supplier ? '' : ' unassigned') + '">' + esc(it.supplier || '未分配') + '</span></div>'
-      }
-      html += '</div>'
-    } else {
-      html += '<div class="assign-empty">暂无分工分配数据</div>'
-    }
-    html += '</div>'
-
     if (updatedAt) html += '<div class="result-foot">数据更新于 ' + esc(fmtTime(updatedAt)) + '</div>'
-    html += '</div>'
+    html += '</div></div>'
     return html
   }
 
@@ -540,11 +703,25 @@ function buildStats(cars, excludeBiaowai) {
     })
     $('back-btn').addEventListener('click', function () { show('search') })
     $('stats-entry').addEventListener('click', openStats)
-    $('stats-back').addEventListener('click', function () { show('search') })
-    $('stats-exclude').addEventListener('change', openStats)
+    $('stats-back').addEventListener('click', function () { show('admin'); renderAdmin() })
+
+    $('stats-exclude').addEventListener('change', function () { statsState.exclude = this.checked; renderStatsView() })
+    $('filter-model').addEventListener('change', function () { statsState.model = this.value; renderStatsView() })
+    $('filter-kind').addEventListener('change', function () { statsState.kind = this.value; renderStatsView() })
+    $('filter-process').addEventListener('change', function () { statsState.process = this.value; renderStatsView() })
+    $('filter-reset').addEventListener('click', function () {
+      statsState.model = '全部'; statsState.kind = '全部'; statsState.process = '全部'; statsState.exclude = true
+      fillFilterSelects(); $('stats-exclude').checked = true; renderStatsView()
+    })
+    $('chart-bar-btn').addEventListener('click', function () { setChartType('bar') })
+    $('chart-pie-btn').addEventListener('click', function () { setChartType('pie') })
+    $('pie-dim').addEventListener('change', function () {
+      statsState.pieDim = this.value
+      if (lastStats) $('chart-pie').innerHTML = donutChartHtml(lastStats, statsState.pieDim)
+    })
 
     $('login-btn').addEventListener('click', function () {
-      var res = checkAdmin($('admin-user').value, $('admin-pass').value)
+      var res = checkAdmin($('admin-pass').value)
       if (!res.ok) { $('login-err').textContent = res.message; return }
       setAdmin(true)
       $('login-err').textContent = ''

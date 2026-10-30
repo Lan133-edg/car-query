@@ -72,32 +72,56 @@
     background: var(--card); border-radius: 16px; padding: 18px;
     margin-top: 16px; box-shadow: 0 2px 10px rgba(28, 35, 51, .05);
   }
-  .result-head { display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
-  .car-no { font-size: 30px; font-weight: 800; letter-spacing: 2px; color: var(--primary); }
-  .tags { display: flex; gap: 8px; flex-wrap: wrap; }
-  .tag { font-size: 13px; border-radius: 8px; padding: 4px 12px; }
-  .tag-primary { background: rgba(30, 79, 216, .08); color: var(--primary); font-weight: 600; }
-  .tag-gray { background: #f0f2f8; color: var(--text-sub); }
-  .tag-warn { background: rgba(217, 122, 6, .1); color: #d97a06; font-weight: 600; border: 1px solid rgba(217, 122, 6, .35); }
-
-  .section { margin-top: 14px; }
-  .section-title { font-size: 13px; color: var(--text-sub); font-weight: 600; margin-bottom: 10px; }
+  .result-card { padding: 0; overflow: hidden; }
+  .rc-hero {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #fff; padding: 20px 18px 16px; position: relative;
+  }
+  .rc-hero::after {
+    content: '🚃'; position: absolute; right: 14px; top: 14px; font-size: 26px; opacity: .35;
+  }
+  .rc-carline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .rc-car-no { font-size: 34px; font-weight: 800; letter-spacing: 3px; text-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .rc-biaowai {
+    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.5);
+    font-size: 12px; padding: 3px 12px; border-radius: 999px; font-weight: 700;
+  }
+  .rc-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .rc-tag {
+    background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
+    font-size: 12px; padding: 4px 12px; border-radius: 999px;
+  }
+  .rc-body { padding: 16px 18px 18px; }
+  .rc-sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .rc-sec-title { font-size: 15px; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .rc-sec-title::before { content: ''; width: 4px; height: 15px; background: var(--primary); border-radius: 2px; }
+  .rc-count {
+    font-size: 12px; color: #fff; background: var(--primary);
+    border-radius: 999px; padding: 3px 11px; font-weight: 700;
+  }
+  .assign-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 10px; }
+  .rc-item {
+    background: #fff; border: 1px solid var(--border); border-left: 4px solid var(--primary);
+    border-radius: 12px; padding: 10px 12px; box-shadow: 0 2px 8px rgba(30, 79, 216, .07);
+    transition: transform .15s;
+  }
+  .rc-item:active { transform: scale(.98); }
+  .rc-proc { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+  .rc-proc::before { content: '⚙'; font-size: 11px; opacity: .7; }
+  .rc-sup { font-size: 17px; font-weight: 800; color: var(--primary); line-height: 1.35; word-break: break-all; }
+  .rc-item-empty { border-left-color: #cfd6e4; opacity: .72; box-shadow: none; }
+  .rc-item-empty .rc-sup { color: #b6bdcc; font-weight: 500; font-size: 14px; }
+  .rc-base { margin-top: 18px; }
+  .rc-base-title { font-size: 13px; color: var(--text-sub); font-weight: 600; margin-bottom: 10px; }
   .base-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
   .base-item { font-size: 14px; display: flex; gap: 8px; }
   .base-label { color: var(--text-sub); flex-shrink: 0; }
   .base-value { color: var(--text); word-break: break-all; }
-
-  .assign-list { display: flex; flex-direction: column; gap: 8px; }
-  .assign-row {
-    display: flex; align-items: center; justify-content: space-between;
-    background: #f8f9fd; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px;
-  }
-  .assign-process { font-size: 14px; font-weight: 600; }
-  .assign-supplier { font-size: 14px; color: var(--primary); font-weight: 600; }
-  .assign-supplier.unassigned { color: #b6bdcc; font-weight: 400; }
-  .assign-empty { color: var(--text-sub); font-size: 14px; padding: 8px 0; }
-
   .result-foot { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-sub); text-align: right; }
+  .tag { font-size: 13px; border-radius: 8px; padding: 4px 12px; }
+  .tag-primary { background: rgba(30, 79, 216, .08); color: var(--primary); font-weight: 600; }
+  .tag-gray { background: #f0f2f8; color: var(--text-sub); }
+  .tag-warn { background: rgba(217, 122, 6, .1); color: #d97a06; font-weight: 600; border: 1px solid rgba(217, 122, 6, .35); }
 
   .fuzzy-tip { font-size: 13px; color: var(--text-sub); margin-bottom: 6px; }
   .fuzzy-row {
@@ -143,6 +167,46 @@
   .dim-tags { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
   .dim-tag { background: #f0f2f8; border-radius: 6px; padding: 3px 9px; font-size: 12px; }
   .dim-tag b { color: var(--primary); }
+
+  /* ---------- 汇总筛选与图表 ---------- */
+  .filter-card { margin-top: 16px; padding: 14px 16px; }
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-select {
+    flex: 1; min-width: 96px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; font-size: 13px; background: #f8f9fd; color: var(--text); outline: none;
+  }
+  .filter-row2 { display: flex; align-items: center; margin-top: 10px; gap: 8px; }
+  .fcheck { font-size: 13px; color: var(--text-sub); display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .fcheck input { accent-color: var(--primary); transform: scale(1.15); }
+  .freset { margin-left: auto; border: none; background: none; color: var(--primary); font-size: 13px; cursor: pointer; }
+  .stats-excluded { font-size: 12px; color: #d97a06; }
+  .chart-card { padding: 16px; }
+  .chart-head { display: flex; align-items: center; justify-content: space-between; }
+  .chart-title { font-size: 15px; font-weight: 700; }
+  .chart-type-btns { display: flex; gap: 6px; }
+  .ctype {
+    border: 1px solid var(--border); background: #f8f9fd; color: var(--text-sub);
+    border-radius: 999px; font-size: 12px; padding: 5px 12px; cursor: pointer;
+  }
+  .ctype.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .bar-chart { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; }
+  .bar-name {
+    width: 76px; font-size: 12px; color: var(--text); text-align: right; flex-shrink: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bar-track { flex: 1; height: 18px; background: #f0f2f8; border-radius: 9px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--primary), #5c7ce8); }
+  .bar-val { width: 34px; font-size: 12px; font-weight: 700; color: var(--primary); flex-shrink: 0; }
+  .pie-dim-row { margin-top: 12px; display: flex; align-items: center; gap: 6px; }
+  .pie-dim-label { font-size: 12px; color: var(--text-sub); flex-shrink: 0; }
+  .pie-wrap { display: flex; align-items: center; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
+  .pie-legend { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 6px; }
+  .pl-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); }
+  .pl-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .pl-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-val { color: var(--text-sub); white-space: nowrap; }
+  .stats-empty { text-align: center; color: var(--text-sub); padding: 24px 0; font-size: 14px; }
 
   /* ---------- 管理端 ---------- */
   .admin-head { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; }
@@ -251,7 +315,6 @@
 
     <div id="result-box"></div>
 
-    <button id="stats-entry" class="admin-entry">📊 分工汇总（厂家 / 车型 / 车种 / 标的）</button>
     <button id="admin-entry" class="admin-entry">🔒 数据管理（仅管理员）</button>
   </div>
 
@@ -266,10 +329,9 @@
     <div id="admin-login" class="card login-card">
       <div class="login-icon">🔐</div>
       <div class="login-title">管理员登录</div>
-      <div class="login-sub">只有管理员可以导入和修改数据</div>
+      <div class="login-sub">输入管理员密码，进入数据管理与汇总</div>
       <div class="login-form">
-        <input id="admin-user" class="login-input" placeholder="账号">
-        <input id="admin-pass" class="login-input" type="password" placeholder="密码">
+        <input id="admin-pass" class="login-input" type="password" placeholder="管理员密码">
         <div id="login-err" class="login-err"></div>
         <button id="login-btn" class="login-btn">登 录</button>
       </div>
@@ -313,6 +375,7 @@
         <div class="note">覆盖全部 = 用导入的表替换所有数据；追加更新 = 只更新表里出现的车号，其余车辆保持不变（同车号以新数据为准）。</div>
       </div>
 
+      <button id="stats-entry" class="mini-btn" style="width:100%;margin-top:14px;font-size:15px;padding:13px">📊 分工汇总统计</button>
       <div class="danger-zone">
         <button id="clear-import-btn" class="danger-btn">清除导入数据，恢复内置分车表</button>
         <button id="logout-btn" class="mini-btn" style="width:100%;margin-top:12px;background:#f0f2f8;color:var(--text-sub)">退出管理员登录</button>
@@ -325,8 +388,8 @@
   <!-- ===== 分工汇总视图 ===== -->
   <div id="view-stats" style="display:none">
     <div class="admin-head">
-      <div class="admin-title">分工汇总</div>
-      <button id="stats-back" class="back-btn">‹ 返回查询</button>
+      <div class="admin-title">📊 分工汇总</div>
+      <button id="stats-back" class="back-btn">‹ 返回管理</button>
     </div>
 
     <div class="card stats">
@@ -346,9 +409,40 @@
       </div>
     </div>
 
-    <div class="stats-toggle-row">
-      <label><input type="checkbox" id="stats-exclude" checked> 排除标外车</label>
-      <span id="stats-excluded" class="stats-excluded"></span>
+    <div class="card filter-card">
+      <div class="filter-row">
+        <select id="filter-model" class="filter-select"></select>
+        <select id="filter-kind" class="filter-select"></select>
+        <select id="filter-process" class="filter-select"></select>
+      </div>
+      <div class="filter-row2">
+        <label class="fcheck"><input type="checkbox" id="stats-exclude" checked> 排除标外车</label>
+        <span id="stats-excluded" class="stats-excluded"></span>
+        <button id="filter-reset" class="freset">重置筛选</button>
+      </div>
+    </div>
+
+    <div class="card chart-card">
+      <div class="chart-head">
+        <div class="chart-title">图表展示</div>
+        <div class="chart-type-btns">
+          <button id="chart-bar-btn" class="ctype active">柱状图</button>
+          <button id="chart-pie-btn" class="ctype">饼图</button>
+        </div>
+      </div>
+      <div id="chart-bar-wrap"></div>
+      <div id="chart-pie-wrap" style="display:none">
+        <div class="pie-dim-row">
+          <span class="pie-dim-label">占比维度：</span>
+          <select id="pie-dim" class="filter-select" style="max-width:180px">
+            <option value="supplier">厂家（车辆数）</option>
+            <option value="process">标的（分工项）</option>
+            <option value="model">车型</option>
+            <option value="kind">车种</option>
+          </select>
+        </div>
+        <div id="chart-pie"></div>
+      </div>
     </div>
 
     <div id="stats-list"></div>
