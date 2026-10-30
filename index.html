@@ -9,8 +9,23 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
-<script src="data.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="data.js?v=8"></script>
+<script src="app.js?v=8"></script>
+<script>
+// 自检保险：1.5 秒后若主脚本未就绪（加载失败/不完整），弹出重新加载提示
+(function () {
+  function bootFail() {
+    if (window.__APP_READY) return
+    var d = document.createElement('div')
+    d.style.cssText = 'position:fixed;left:12px;right:12px;bottom:16px;z-index:999;background:#fff3f0;border:1px solid #f0b4ab;border-radius:10px;padding:12px;font-size:14px;color:#a33;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.12)'
+    d.innerHTML = '⚠️ 页面脚本未加载完整（网络波动或缓存异常），查询功能暂不可用<br><button onclick="location.reload()" style="margin-top:8px;padding:8px 22px;border:none;border-radius:8px;background:#e5484d;color:#fff;font-size:14px">🔄 重新加载</button>'
+    document.body.appendChild(d)
+  }
+  function wait() { setTimeout(function () { if (!window.__APP_READY) bootFail() }, 1500) }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wait)
+  else wait()
+})()
+</script>
 <style>
   :root {
     --primary: #1e4fd8;

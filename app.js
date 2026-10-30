@@ -799,3 +799,6 @@ function donutSegments(map, topN) {
     $('clear-import-btn').addEventListener('click', clearImported)
   })
 })()
+
+// 主脚本就绪标记（供 index.html 的自检保险判断）
+window.__APP_READY = true
