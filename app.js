@@ -140,13 +140,74 @@ function textToRows(text) {
 
 // 管理员校验
 var ADMIN_USER = 'sfcl'
-var ADMIN_PASS = '1234567890'
+var ADMIN_PASS = '123'
 function checkAdmin(username, password) {
   var u = String(username == null ? '' : username).trim()
   var p = String(password == null ? '' : password).trim()
   if (!u || !p) return { ok: false, message: '请输入账号和密码' }
   if (u !== ADMIN_USER || p !== ADMIN_PASS) return { ok: false, message: '账号或密码错误' }
   return { ok: true, message: '' }
+}
+
+// ---------- 汇总统计 ----------
+// 解析 carType（如 "25G型 硬座（YZ）"）为 车型 / 车种
+function parseCarType(t) {
+  var s = String(t || '').trim()
+  var m = /^(.+?)型\s*(.+?)（(.+?)）$/.exec(s)
+  if (m) return { model: m[1], kind: m[2] }
+  return { model: s || '—', kind: '—' }
+}
+
+// 各厂家分车汇总：厂家 -> 车辆数（去重）/ 分工项数 / 标的·车型·车种分布
+// excludeBiaowai = true 时排除标外车（biaowai 标记车辆，用户要求统计不含标外）
+function buildStats(cars, excludeBiaowai) {
+  var list = []
+  var excluded = 0
+  for (var i = 0; i < cars.length; i++) {
+    if (excludeBiaowai && cars[i].biaowai) { excluded++; continue }
+    list.push(cars[i])
+  }
+  var map = {}
+  var totalEntries = 0
+  for (var j = 0; j < list.length; j++) {
+    var car = list[j]
+    var tt = parseCarType(car.carType)
+    var perCar = {} // 车辆级去重：该厂家在这辆车上承接的所有工序
+    var as = car.assignments || []
+    for (var k = 0; k < as.length; k++) {
+      var sup = String(as[k].supplier == null ? '' : as[k].supplier).trim()
+      if (!sup) continue
+      totalEntries++
+      if (!map[sup]) map[sup] = { entries: 0, carSet: {}, processes: {}, models: {}, kinds: {} }
+      map[sup].entries++
+      if (!perCar[sup]) perCar[sup] = []
+      perCar[sup].push(String(as[k].process || '—'))
+    }
+    for (var s2 in perCar) {
+      var s = map[s2]
+      s.carSet[car.carNo] = true
+      s.models[tt.model] = (s.models[tt.model] || 0) + 1
+      s.kinds[tt.kind] = (s.kinds[tt.kind] || 0) + 1
+      for (var p = 0; p < perCar[s2].length; p++) {
+        var pr = perCar[s2][p]
+        s.processes[pr] = (s.processes[pr] || 0) + 1
+      }
+    }
+  }
+  var rows = []
+  for (var name in map) {
+    var m2 = map[name]
+    rows.push({
+      name: name,
+      entries: m2.entries,
+      carCount: Object.keys(m2.carSet).length,
+      processes: m2.processes,
+      models: m2.models,
+      kinds: m2.kinds
+    })
+  }
+  rows.sort(function (a, b) { return b.carCount - a.carCount || b.entries - a.entries })
+  return { totalCars: list.length, excludedBiaowai: excluded, totalEntries: totalEntries, supplierCount: rows.length, rows: rows }
 }
 
 // ===================== PURE END =====================
@@ -208,6 +269,49 @@ function checkAdmin(username, password) {
   function show(view) {
     $('view-search').style.display = view === 'search' ? '' : 'none'
     $('view-admin').style.display = view === 'admin' ? '' : 'none'
+    $('view-stats').style.display = view === 'stats' ? '' : 'none'
+  }
+
+  // ---------- 分工汇总 ----------
+  function fmtDim(map) {
+    var keys = Object.keys(map)
+    keys.sort(function (a, b) { return map[b] - map[a] })
+    var out = []
+    for (var i = 0; i < keys.length; i++) {
+      out.push('<span class="dim-tag">' + esc(keys[i]) + ' <b>' + map[keys[i]] + '</b></span>')
+    }
+    return out.join('')
+  }
+
+  function renderStats(st) {
+    $('stats-cars').textContent = st.totalCars
+    $('stats-suppliers').textContent = st.supplierCount
+    $('stats-entries').textContent = st.totalEntries
+    $('stats-excluded').textContent = st.excludedBiaowai ? ('已排除标外车 ' + st.excludedBiaowai + ' 辆') : ''
+    var html = ''
+    if (!st.rows.length) {
+      html = '<div class="card sup-card" style="text-align:center;color:var(--text-sub)">暂无可统计数据</div>'
+    }
+    for (var i = 0; i < st.rows.length; i++) {
+      var r = st.rows[i]
+      html += '<div class="card sup-card">'
+      html += '<div class="sup-head">'
+      html += '<div class="sup-name"><span class="sup-rank">' + (i + 1) + '</span>' + esc(r.name) + '</div>'
+      html += '<div class="sup-count"><b>' + r.carCount + '</b> 辆车 · ' + r.entries + ' 项分工</div>'
+      html += '</div>'
+      html += '<div class="dim-row"><div class="dim-label">标的</div><div class="dim-tags">' + fmtDim(r.processes) + '</div></div>'
+      html += '<div class="dim-row"><div class="dim-label">车型</div><div class="dim-tags">' + fmtDim(r.models) + '</div></div>'
+      html += '<div class="dim-row"><div class="dim-label">车种</div><div class="dim-tags">' + fmtDim(r.kinds) + '</div></div>'
+      html += '</div>'
+    }
+    $('stats-list').innerHTML = html
+  }
+
+  function openStats() {
+    var exclude = $('stats-exclude').checked
+    var data = ensureData()
+    renderStats(buildStats(data.cars, exclude))
+    show('stats')
   }
 
   // ---------- 查询 ----------
@@ -435,6 +539,9 @@ function checkAdmin(username, password) {
       show('admin'); renderAdmin()
     })
     $('back-btn').addEventListener('click', function () { show('search') })
+    $('stats-entry').addEventListener('click', openStats)
+    $('stats-back').addEventListener('click', function () { show('search') })
+    $('stats-exclude').addEventListener('change', openStats)
 
     $('login-btn').addEventListener('click', function () {
       var res = checkAdmin($('admin-user').value, $('admin-pass').value)

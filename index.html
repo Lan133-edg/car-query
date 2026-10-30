@@ -124,6 +124,26 @@
   }
   .admin-entry:active { background: #f0f2f8; }
 
+  /* ---------- 分工汇总 ---------- */
+  .stats-toggle-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 16px;
+    font-size: 13px; color: var(--text-sub);
+  }
+  .stats-toggle-row label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .stats-toggle-row input { transform: scale(1.15); accent-color: var(--primary); }
+  .stats-excluded { margin-left: auto; font-size: 12px; color: #d97a06; }
+  .sup-card { margin-top: 14px; padding: 16px; }
+  .sup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .sup-name { font-size: 16px; font-weight: 700; color: var(--primary); }
+  .sup-rank { font-size: 12px; color: #b6bdcc; margin-right: 4px; font-weight: 400; }
+  .sup-count { font-size: 13px; color: var(--text-sub); white-space: nowrap; }
+  .sup-count b { color: var(--primary); font-size: 16px; }
+  .dim-row { display: flex; gap: 8px; margin-top: 10px; align-items: flex-start; }
+  .dim-label { flex-shrink: 0; width: 40px; font-size: 12px; color: var(--text-sub); line-height: 24px; }
+  .dim-tags { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .dim-tag { background: #f0f2f8; border-radius: 6px; padding: 3px 9px; font-size: 12px; }
+  .dim-tag b { color: var(--primary); }
+
   /* ---------- 管理端 ---------- */
   .admin-head { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; }
   .admin-title { font-size: 20px; font-weight: 700; }
@@ -231,6 +251,7 @@
 
     <div id="result-box"></div>
 
+    <button id="stats-entry" class="admin-entry">📊 分工汇总（厂家 / 车型 / 车种 / 标的）</button>
     <button id="admin-entry" class="admin-entry">🔒 数据管理（仅管理员）</button>
   </div>
 
@@ -299,6 +320,38 @@
 
       <div class="note">说明：管理员导入的数据保存在「本浏览器」中，仅本机生效；要让所有人看到更新，请把新表格发给维护者，由其更新网页数据文件后重新发布。</div>
     </div>
+  </div>
+
+  <!-- ===== 分工汇总视图 ===== -->
+  <div id="view-stats" style="display:none">
+    <div class="admin-head">
+      <div class="admin-title">分工汇总</div>
+      <button id="stats-back" class="back-btn">‹ 返回查询</button>
+    </div>
+
+    <div class="card stats">
+      <div class="stat-item">
+        <div class="stat-num" id="stats-cars">0</div>
+        <div class="stat-label">统计车辆</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-num" id="stats-suppliers">0</div>
+        <div class="stat-label">厂家数</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-num" id="stats-entries">0</div>
+        <div class="stat-label">分工项</div>
+      </div>
+    </div>
+
+    <div class="stats-toggle-row">
+      <label><input type="checkbox" id="stats-exclude" checked> 排除标外车</label>
+      <span id="stats-excluded" class="stats-excluded"></span>
+    </div>
+
+    <div id="stats-list"></div>
   </div>
 
   <footer>总装分厂 · 分车分工查询</footer>
