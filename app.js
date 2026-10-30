@@ -74,6 +74,9 @@ function isProcessColumn(label) {
   return false
 }
 
+// 汇总统计不参与统计的标的（查询结果仍正常显示，仅统计/筛选中排除）
+var STATS_EXCLUDED_PROCESSES = ['吧台及展示柜', '地板、木门']
+
 // 把二维表（第 1 行为表头）转成标准记录数组；同车号多行时后行覆盖前行
 function buildRecords(rows) {
   if (!rows || rows.length < 2) throw new Error('表格为空或没有数据行')
@@ -182,6 +185,7 @@ function buildStats(cars, opts) {
     var perCar = {} // 车辆级去重：该厂家在这辆车上承接的所有工序
     var as = car.assignments || []
     for (var k = 0; k < as.length; k++) {
+      if (STATS_EXCLUDED_PROCESSES.indexOf(String(as[k].process || '')) > -1) continue
       if (!hit(opts.process, String(as[k].process || ''))) continue
       var sup = String(as[k].supplier == null ? '' : as[k].supplier).trim()
       if (!sup) continue
@@ -326,6 +330,7 @@ function donutSegments(map, topN) {
       if (tt.kind && tt.kind !== '—') kinds[tt.kind] = true
       var as = cars[i].assignments || []
       for (var k = 0; k < as.length; k++) {
+        if (STATS_EXCLUDED_PROCESSES.indexOf(String(as[k].process || '')) > -1) continue
         if (as[k].process) processes[as[k].process] = true
       }
     }
