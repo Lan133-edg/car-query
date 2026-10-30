@@ -27,6 +27,12 @@ function workNoOf(car) {
   return ''
 }
 
+// 取车辆的「工作号年份」：2025-101 → 2025
+function workYearOf(car) {
+  var m = String(workNoOf(car) || '').match(/^(\d{4})/)
+  return m ? m[1] : ''
+}
+
 // 去前导零：030455 → 30455（数字车号前导零容错）
 function stripZeros(v) {
   var s = String(v == null ? '' : v).replace(/^0+/, '')
@@ -174,8 +180,8 @@ function parseCarType(t) {
 }
 
 // 各厂家分车汇总：厂家 -> 车辆数（去重）/ 分工项数 / 标的·车型·车种分布
-// opts: { excludeBiaowai, model, kind, process }
-//   excludeBiaowai=true 排除标外车；model/kind/process 为**多选数组**（空数组=该维度不限）
+// opts: { excludeBiaowai, year, model, kind, process }
+//   excludeBiaowai=true 排除标外车；year/model/kind/process 为**多选数组**（空数组=该维度不限）
 function buildStats(cars, opts) {
   if (typeof opts === 'boolean') opts = { excludeBiaowai: opts } // 兼容旧签名
   opts = opts || {}
@@ -185,6 +191,7 @@ function buildStats(cars, opts) {
   for (var i = 0; i < cars.length; i++) {
     var car0 = cars[i]
     if (opts.excludeBiaowai && car0.biaowai) { excluded++; continue }
+    if (!hit(opts.year, workYearOf(car0))) continue
     var tt0 = parseCarType(car0.carType)
     if (!hit(opts.model, tt0.model)) continue
     if (!hit(opts.kind, tt0.kind)) continue
@@ -342,8 +349,8 @@ function donutSegments(map, topN) {
 
   // ---------- 分工汇总（管理员） ----------
   // 筛选状态：数组为**多选**，空数组 = 该维度不限
-  var statsState = { exclude: true, model: [], kind: [], process: [], pieDim: 'supplier' }
-  var filterOptions = { models: [], kinds: [], processes: [] }
+  var statsState = { exclude: true, year: [], model: [], kind: [], process: [], pieDim: 'supplier' }
+  var filterOptions = { years: [], models: [], kinds: [], processes: [] }
   var lastStats = null
 
   function fmtDim(map) {
@@ -356,10 +363,13 @@ function donutSegments(map, topN) {
     return out.join('')
   }
 
-  // 收集所有可筛选的 车型 / 车种 / 标的
+  // 收集所有可筛选的 年份 / 车型 / 车种 / 标的（只统计非标外车，与统计口径一致）
   function collectFilterOptions(cars) {
-    var models = {}, kinds = {}, processes = {}
+    var years = {}, models = {}, kinds = {}, processes = {}
     for (var i = 0; i < cars.length; i++) {
+      if (cars[i].biaowai) continue // 标外车不参与统计，其选项也不出现
+      var y = workYearOf(cars[i])
+      if (y) years[y] = true
       var tt = parseCarType(cars[i].carType)
       if (tt.model && tt.model !== '—') models[tt.model] = true
       if (tt.kind && tt.kind !== '—') kinds[tt.kind] = true
@@ -370,11 +380,12 @@ function donutSegments(map, topN) {
       }
     }
     function keysOf(o) { var a = []; for (var key in o) a.push(key); a.sort(); return a }
-    filterOptions = { models: keysOf(models), kinds: keysOf(kinds), processes: keysOf(processes) }
+    filterOptions = { years: keysOf(years).reverse(), models: keysOf(models), kinds: keysOf(kinds), processes: keysOf(processes) }
   }
 
-  // 渲染三个多选标签组（点击勾选/取消，可多选）
+  // 渲染四个多选标签组（点击勾选/取消，可多选）
   function renderFilterChips() {
+    renderChipGroup('chips-year', filterOptions.years, statsState.year)
     renderChipGroup('chips-model', filterOptions.models, statsState.model)
     renderChipGroup('chips-kind', filterOptions.kinds, statsState.kind)
     renderChipGroup('chips-process', filterOptions.processes, statsState.process)
@@ -783,6 +794,9 @@ function donutSegments(map, topN) {
     $('stats-back').addEventListener('click', function () { show('admin'); renderAdmin() })
 
     // 多选标签：点击切换勾选（事件委托）
+    $('chips-year').addEventListener('click', function (e) {
+      var c = e.target.closest('.fchip'); if (c) toggleChip('year', c.getAttribute('data-val'))
+    })
     $('chips-model').addEventListener('click', function (e) {
       var c = e.target.closest('.fchip'); if (c) toggleChip('model', c.getAttribute('data-val'))
     })
@@ -793,7 +807,7 @@ function donutSegments(map, topN) {
       var c = e.target.closest('.fchip'); if (c) toggleChip('process', c.getAttribute('data-val'))
     })
     $('filter-reset').addEventListener('click', function () {
-      statsState.model = []; statsState.kind = []; statsState.process = []; statsState.exclude = true
+      statsState.year = []; statsState.model = []; statsState.kind = []; statsState.process = []; statsState.exclude = true
       renderFilterChips(); renderStatsView()
     })
     $('chart-bar-btn').addEventListener('click', function () { setChartType('bar') })
