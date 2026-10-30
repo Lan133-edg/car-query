@@ -250,7 +250,7 @@ function donutSegments(map, topN) {
   var STORAGE_KEY = 'car_query_web_data_v1'
   var RECENT_KEY = 'car_query_web_recent_v1'
   var ADMIN_KEY = 'car_query_web_admin_v1'
-  var WEB_DATA_VERSION = 2 // v2：合并标外.xls（108 辆 biaowai 标记，统计时排除；分工冲突以分车表为准）
+  var WEB_DATA_VERSION = 3 // v3：修复个别浏览器缓存旧数据导致查不到车（强制刷新内置数据）
 
   var $ = function (id) { return document.getElementById(id) }
 
@@ -581,10 +581,19 @@ function donutSegments(map, topN) {
       box.innerHTML = renderFuzzy(res.fuzzy.slice(0, 10), kw)
       pushRecent(kw)
     } else {
+      var total = data.cars.length
+      var seedN = (window.SEED_CARS && window.SEED_CARS.length) || 0
+      var tips = ['车号、工作号都可以查（如 676638 或 2026-071）', '请核对输入是否正确，或联系调度确认该车辆是否已建档']
+      if (seedN && total !== seedN) {
+        tips.unshift('⚠️ 本机当前数据 ' + total + ' 辆，与最新内置数据 ' + seedN + ' 辆不一致（缓存了旧数据）。解决：进「数据管理」登录后点「清除导入数据，恢复内置分车表」，或清除本站浏览器缓存后刷新')
+      }
+      var tipHtml = ''
+      for (var ti = 0; ti < tips.length; ti++) {
+        tipHtml += '<div class="empty-desc">' + esc(tips[ti]) + '</div>'
+      }
       box.innerHTML = '<div class="card empty-card"><div class="empty-icon">🔍</div>' +
-        '<div class="empty-title">未查到「' + esc(kw) + '」</div>' +
-        '<div class="empty-desc">车号、工作号都可以查（如 676638 或 2026-071）</div>' +
-        '<div class="empty-desc">请核对输入是否正确，或联系调度确认该车辆是否已建档</div></div>'
+        '<div class="empty-title">未查到「' + esc(kw) + '」</div>' + tipHtml +
+        '<div class="empty-desc" style="margin-top:6px;opacity:.7">本机数据：' + total + ' 辆</div></div>'
       pushRecent(kw)
     }
     renderRecent()
