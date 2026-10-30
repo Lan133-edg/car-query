@@ -574,10 +574,20 @@ function donutSegments(map, topN) {
   function doSearch(kw) {
     kw = String(kw == null ? '' : kw).trim()
     if (!kw) { toast('请输入车号或工作号'); return }
-    var data = loadData()
-    var res = searchIn(data.cars, kw)
+    var data = ensureData() // 每次搜索自愈：数据为空/版本过期时自动换内置数据
     var box = $('result-box')
 
+    // 数据彻底没加载出来（如网络波动导致 data.js 加载失败）
+    if (!data.cars.length) {
+      box.innerHTML = '<div class="card empty-card"><div class="empty-icon">📭</div>' +
+        '<div class="empty-title">车辆数据未加载</div>' +
+        '<div class="empty-desc">浏览器没有取到数据文件（可能是网络波动或缓存异常）</div>' +
+        '<div class="empty-desc">请点击下方按钮重新加载页面</div>' +
+        '<button type="button" class="mini-btn reload-btn" style="margin-top:12px;padding:10px 22px">🔄 重新加载</button></div>'
+      return
+    }
+
+    var res = searchIn(data.cars, kw)
     if (res.exact) {
       box.innerHTML = renderResult(res.exact, data.updatedAt)
       pushRecent(res.exact.carNo)
@@ -720,6 +730,7 @@ function donutSegments(map, topN) {
     $('search-btn').addEventListener('click', function () { doSearch($('keyword').value) })
     $('keyword').addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(this.value) })
     $('result-box').addEventListener('click', function (e) {
+      if (e.target.closest('.reload-btn')) { location.reload(); return }
       var row = e.target.closest('.fuzzy-row')
       if (row) doSearch(row.getAttribute('data-no'))
     })
@@ -761,16 +772,17 @@ function donutSegments(map, topN) {
     })
 
     $('login-btn').addEventListener('click', function () {
-      var res = checkAdmin($('admin-user').value, $('admin-pass').value)
+      var uEl = $('admin-user')
+      var res = checkAdmin(uEl ? uEl.value : '', $('admin-pass').value)
       if (!res.ok) { $('login-err').textContent = res.message; return }
       setAdmin(true)
       $('login-err').textContent = ''
-      $('admin-user').value = ''
+      if (uEl) uEl.value = ''
       $('admin-pass').value = ''
       renderAdmin()
       toast('登录成功')
     })
-    $('admin-user').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click() })
+    if ($('admin-user')) $('admin-user').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click() })
     $('admin-pass').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click() })
     $('logout-btn').addEventListener('click', function () {
       setAdmin(false); renderAdmin(); toast('已退出登录')
