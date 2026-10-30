@@ -643,7 +643,6 @@ function donutSegments(map, topN) {
     $('stat-time').textContent = d.updatedAt ? fmtTime(d.updatedAt) : '—'
     $('stat-source').textContent = d.source === 'import' ? '管理员导入' : '内置数据'
     $('preview-box').style.display = 'none'
-    $('import-btn').style.display = 'none'
     pendingRows = null
   }
 
@@ -661,7 +660,6 @@ function donutSegments(map, topN) {
     box.innerHTML = '<div class="preview-title">解析成功：<b>' + records.length + '</b> 辆车，共 <b>' + assignCount + '</b> 条分工</div>' +
       '<div class="preview-sample">示例：' + sample + (records.length > 3 ? ' 等' : '') + '</div>' +
       '<div class="preview-warn">请确认无误后再点下方「确认导入」</div>'
-    $('import-btn').style.display = ''
   }
 
   function doImport(mode) {
@@ -679,7 +677,6 @@ function donutSegments(map, topN) {
     saveData(cars, 'import')
     pendingRows = null
     $('preview-box').style.display = 'none'
-    $('import-btn').style.display = 'none'
     $('paste-text').value = ''
     $('file-input').value = ''
     renderAdmin()
@@ -742,6 +739,8 @@ function donutSegments(map, topN) {
     })
 
     $('admin-entry').addEventListener('click', function () {
+      // 已登录 → 直接进数据分析；未登录 → 显示登录页
+      if (isAdmin()) { openStats(); return }
       show('admin'); renderAdmin()
     })
     $('back-btn').addEventListener('click', function () { show('search') })
@@ -780,6 +779,7 @@ function donutSegments(map, topN) {
       $('admin-pass').value = ''
       renderAdmin()
       toast('登录成功')
+      openStats() // 登录成功后直接进入数据分析
     })
     if ($('admin-user')) $('admin-user').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click() })
     $('admin-pass').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click() })
