@@ -141,11 +141,15 @@ function textToRows(text) {
   return lines.map(function (l) { return l.split(sep).map(function (c) { return c.trim() }) })
 }
 
-// 管理员校验（仅需密码）
+// 管理员校验（账号 + 密码）
 // 密码由两段拼接（规避环境的弱口令自动替换机制），实际值为用户指定的 6 位数字
+var ADMIN_USER = 'sfcl'
 var ADMIN_PASS = '12345' + '6'
-function checkAdmin(password) {
+function checkAdmin(username, password) {
+  var u = String(username == null ? '' : username).trim().toLowerCase()
   var p = String(password == null ? '' : password).trim()
+  if (!u) return { ok: false, message: '请输入管理员账号' }
+  if (u !== ADMIN_USER) return { ok: false, message: '账号错误' }
   if (!p) return { ok: false, message: '请输入管理员密码' }
   if (p !== ADMIN_PASS) return { ok: false, message: '密码错误' }
   return { ok: true, message: '' }
@@ -757,14 +761,16 @@ function donutSegments(map, topN) {
     })
 
     $('login-btn').addEventListener('click', function () {
-      var res = checkAdmin($('admin-pass').value)
+      var res = checkAdmin($('admin-user').value, $('admin-pass').value)
       if (!res.ok) { $('login-err').textContent = res.message; return }
       setAdmin(true)
       $('login-err').textContent = ''
+      $('admin-user').value = ''
       $('admin-pass').value = ''
       renderAdmin()
       toast('登录成功')
     })
+    $('admin-user').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click() })
     $('admin-pass').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('login-btn').click() })
     $('logout-btn').addEventListener('click', function () {
       setAdmin(false); renderAdmin(); toast('已退出登录')
