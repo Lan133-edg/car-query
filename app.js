@@ -142,9 +142,8 @@ function textToRows(text) {
 }
 
 // 管理员校验（账号 + 密码）
-// 密码由两段拼接（规避环境的弱口令自动替换机制），实际值为用户指定的 6 位数字
 var ADMIN_USER = 'sfcl'
-var ADMIN_PASS = '12345' + '6'
+var ADMIN_PASS = '123456'
 function checkAdmin(username, password) {
   var u = String(username == null ? '' : username).trim().toLowerCase()
   var p = String(password == null ? '' : password).trim()
