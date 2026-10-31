@@ -39,14 +39,16 @@ function stripZeros(v) {
   return s || '0'
 }
 
-// ---------- 电池箱：按工作号规则自动分配 ----------
+// ---------- 规则型分工：按工作号最后一位数字决定厂家 ----------
 // 规则：取工作号里**最后一个数字**
-//   1 / 3 / 5 / 7 / 9 / 0 → 铁科
-//   2 / 4 / 6 / 8         → 鑫汇通
-// 带字母后缀（如 ZW）时，看字母前面那位数字：2026-396ZW → 6 → 鑫汇通
-var BATTERY_PROCESS = '电池箱'
-var BATTERY_SUPPLIER_A = '铁科'   // 尾号 1/3/5/7/9/0
-var BATTERY_SUPPLIER_B = '鑫汇通' // 尾号 2/4/6/8
+//   0 / 1 / 3 / 5 / 7 / 9 → A 厂家
+//   2 / 4 / 6 / 8         → B 厂家
+// 带字母后缀（如 ZW）时，看字母前面那位数字：2026-396ZW → 6 → B 厂家
+// 新增同类规则只需在下面表格里加一行
+var DIGIT_RULES = [
+  { process: '电池箱', a: '铁科', b: '鑫汇通', rule: 'battery-guihua' },
+  { process: '电伴热', a: '泰泓', b: '梓恒瑞', rule: 'heat-trace-guihua' }
+]
 
 // 取字符串里最后一个数字字符（支持 ZW 等字母后缀、全角、空格）
 function lastDigitOf(v) {
@@ -58,41 +60,44 @@ function lastDigitOf(v) {
   return ''
 }
 
-function batteryBoxSupplier(workNo) {
+function digitRuleSupplier(cfg, workNo) {
   var d = lastDigitOf(workNo)
   if (!d) return ''
-  if (d === '1' || d === '3' || d === '5' || d === '7' || d === '9' || d === '0') return BATTERY_SUPPLIER_A
-  return BATTERY_SUPPLIER_B // 2 / 4 / 6 / 8
+  if (d === '1' || d === '3' || d === '5' || d === '7' || d === '9' || d === '0') return cfg.a
+  return cfg.b // 2 / 4 / 6 / 8
 }
 
-// 给车辆批量补上「电池箱」分工（幂等：重复执行结果一致）
-// · 表格自带电池箱分工时以表格为准，规则条目不重复叠加
-// · 规则条目带 rule:BATTERY_RULE 标记，规则调整后会被重新计算
-var BATTERY_RULE = 'battery-guihua'
-function applyBatteryRule(cars) {
+// 给车辆批量补上规则型分工（电池箱、电伴热…；幂等：重复执行结果一致）
+// · 表格自带该分工时以表格为准，规则条目不重复叠加
+// · 规则条目带 rule 标记，规则调整后会被重新计算
+function applyDigitRules(cars) {
   if (!Array.isArray(cars)) return cars
   for (var i = 0; i < cars.length; i++) {
     var car = cars[i]
     if (!car) continue
     if (!Array.isArray(car.assignments)) car.assignments = []
     var as = car.assignments
-    var ruleIdx = -1
-    var tableIdx = -1
-    for (var k = 0; k < as.length; k++) {
-      if (String(as[k].process || '').indexOf(BATTERY_PROCESS) < 0) continue
-      if (as[k].rule === BATTERY_RULE) ruleIdx = k
-      else tableIdx = k
-    }
-    var sup = batteryBoxSupplier(workNoOf(car))
-    if (tableIdx > -1) { // 表格里已有，删掉可能残留的规则条目
-      if (ruleIdx > -1) as.splice(ruleIdx, 1)
-      continue
-    }
-    if (!sup) continue
-    if (ruleIdx > -1) {
-      as[ruleIdx].supplier = sup
-    } else {
-      as.push({ process: BATTERY_PROCESS, supplier: sup, rule: BATTERY_RULE })
+    var workNo = workNoOf(car)
+    for (var r = 0; r < DIGIT_RULES.length; r++) {
+      var cfg = DIGIT_RULES[r]
+      var ruleIdx = -1
+      var tableIdx = -1
+      for (var k = 0; k < as.length; k++) {
+        if (String(as[k].process || '').indexOf(cfg.process) < 0) continue
+        if (as[k].rule === cfg.rule) ruleIdx = k
+        else tableIdx = k
+      }
+      var sup = digitRuleSupplier(cfg, workNo)
+      if (tableIdx > -1) { // 表格里已有，删掉可能残留的规则条目
+        if (ruleIdx > -1) as.splice(ruleIdx, 1)
+        continue
+      }
+      if (!sup) continue
+      if (ruleIdx > -1) {
+        as[ruleIdx].supplier = sup
+      } else {
+        as.push({ process: cfg.process, supplier: sup, rule: cfg.rule })
+      }
     }
   }
   return cars
@@ -138,7 +143,7 @@ function searchIn(cars, keyword) {
 var PROCESS_KEYWORDS = [
   '木件', '木协', '铁件', '车窗', '窗协', '卧铺', '钢门', '塞拉门', '风道',
   '油漆', '电气', '制动', '转向架', '钩缓', '内装', '地板', '玻璃',
-  '门窗', '座椅', '空调', '给水', '卫生间', '配电', '吧台', '展示柜', '电池箱'
+  '门窗', '座椅', '空调', '给水', '卫生间', '配电', '吧台', '展示柜', '电池箱', '电伴热'
 ]
 
 function isProcessColumn(label) {
@@ -350,7 +355,7 @@ function donutSegments(map, topN) {
     return { cars: [], updatedAt: null, source: 'seed', dataVersion: 0 }
   }
   function saveData(cars, source) {
-    applyBatteryRule(cars) // 落盘前补全「电池箱」分工，保证各入口数据一致
+    applyDigitRules(cars) // 落盘前补全规则型分工（电池箱、电伴热），保证各入口数据一致
     var payload = { cars: cars, updatedAt: Date.now(), source: source || 'seed', dataVersion: WEB_DATA_VERSION }
     lsSet(STORAGE_KEY, payload)
     return payload
@@ -373,7 +378,7 @@ function donutSegments(map, topN) {
   // 统一出口：读取后补全「电池箱」分工（本地旧缓存数据也能自动补齐）
   function ensureData() {
     var d = ensureDataRaw()
-    applyBatteryRule(d.cars)
+    applyDigitRules(d.cars) // 补全规则型分工（电池箱、电伴热）
     return d
   }
 
