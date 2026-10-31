@@ -334,7 +334,7 @@ function donutSegments(map, topN) {
   var STORAGE_KEY = 'car_query_web_data_v1'
   var RECENT_KEY = 'car_query_web_recent_v1'
   var ADMIN_KEY = 'car_query_web_admin_v1'
-  var WEB_DATA_VERSION = 8 // v8：合并 24年分车表（+492 辆标内车，共 1764 辆）；v7 玻璃钢盒子间并入玻璃钢；v6 合并 25年标外.xlsx
+  var WEB_DATA_VERSION = 9 // v9：按 24年分车表-副本 修正 25 辆车的分工（钢门/木件补齐）；v8 合并 24年分车表
 
   var $ = function (id) { return document.getElementById(id) }
 
