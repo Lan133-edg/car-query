@@ -334,7 +334,7 @@ function donutSegments(map, topN) {
   var STORAGE_KEY = 'car_query_web_data_v1'
   var RECENT_KEY = 'car_query_web_recent_v1'
   var ADMIN_KEY = 'car_query_web_admin_v1'
-  var WEB_DATA_VERSION = 5 // v5：data.json 在线自动更新（启动时后台拉取最新数据）；v4 合并 25年分车表
+  var WEB_DATA_VERSION = 6 // v6：合并 25年标外.xlsx（+174 辆标外车，另 4 辆补标外标记）；v5 data.json 在线自动更新；v4 合并 25年分车表
 
   var $ = function (id) { return document.getElementById(id) }
 
