@@ -334,7 +334,7 @@ function donutSegments(map, topN) {
   var STORAGE_KEY = 'car_query_web_data_v1'
   var RECENT_KEY = 'car_query_web_recent_v1'
   var ADMIN_KEY = 'car_query_web_admin_v1'
-  var WEB_DATA_VERSION = 10 // v10：合入 分车表11.2（2026-489 起 12 辆）；v9 按 24年分车表-副本 修正 25 辆
+  var WEB_DATA_VERSION = 11 // v11：合入 采购通知2026-K-039（17 辆，含塞拉门检修）；v10 分车表11.2
 
   var $ = function (id) { return document.getElementById(id) }
 
